@@ -15,24 +15,34 @@ class MoodModel with ChangeNotifier {
   String _currentMood = 'assets/happy_emoji.jpeg';
   Color _backgroundColor = Colors.yellow;
 
+  final Map<String, int> _moodCounts = {
+    'Happy': 0,
+    'Sad': 0,
+    'Excited': 0,
+  };
+
   String get currentMood => _currentMood;
   Color get backgroundColor => _backgroundColor;
+  Map<String, int> get moodCounts => _moodCounts;
 
   void setHappy() {
     _currentMood = 'assets/happy_emoji.jpeg';
     _backgroundColor = Colors.yellow;
+    _moodCounts['Happy'] = (_moodCounts['Happy'] ?? 0) + 1;
     notifyListeners();
   }
 
   void setSad() {
     _currentMood = 'assets/sad_emoji.jpeg';
     _backgroundColor = Colors.blue;
+    _moodCounts['Sad'] = (_moodCounts['Sad'] ?? 0) + 1;
     notifyListeners();
   }
 
   void setExcited() {
     _currentMood = 'assets/excited_emoji.jpeg';
     _backgroundColor = Colors.orange;
+    _moodCounts['Excited'] = (_moodCounts['Excited'] ?? 0) + 1;
     notifyListeners();
   }
 }
@@ -67,6 +77,8 @@ class HomePage extends StatelessWidget {
                 MoodDisplay(),
                 SizedBox(height: 50),
                 MoodButtons(),
+                SizedBox(height: 30),
+                MoodCounter(), // 👈 new widget for counts
               ],
             ),
           ),
@@ -117,6 +129,52 @@ class MoodButtons extends StatelessWidget {
             Provider.of<MoodModel>(context, listen: false).setExcited();
           },
           child: Text('Excited'),
+        ),
+      ],
+    );
+  }
+}
+
+// Widget that displays mood counters
+class MoodCounter extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<MoodModel>(
+      builder: (context, moodModel, child) {
+        return Column(
+          children: [
+            Text("Mood Counts:", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                CounterCard(label: 'Happy', count: moodModel.moodCounts['Happy'] ?? 0),
+                CounterCard(label: 'Sad', count: moodModel.moodCounts['Sad'] ?? 0),
+                CounterCard(label: 'Excited', count: moodModel.moodCounts['Excited'] ?? 0),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// A small reusable widget for each counter
+class CounterCard extends StatelessWidget {
+  final String label;
+  final int count;
+
+  const CounterCard({required this.label, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+        Text(
+          count.toString(),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
       ],
     );
