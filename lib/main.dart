@@ -21,29 +21,37 @@ class MoodModel with ChangeNotifier {
     'Excited': 0,
   };
 
+  final List<String> _moodHistory = [];
+
   String get currentMood => _currentMood;
   Color get backgroundColor => _backgroundColor;
   Map<String, int> get moodCounts => _moodCounts;
+  List<String> get moodHistory => _moodHistory;
+
+  void _updateMood(String mood, String asset, Color bgColor) {
+    _currentMood = asset;
+    _backgroundColor = bgColor;
+
+    _moodCounts[mood] = (_moodCounts[mood] ?? 0) + 1;
+
+    _moodHistory.insert(0, mood);
+    if (_moodHistory.length > 3) {
+      _moodHistory.removeLast();
+    }
+
+    notifyListeners();
+  }
 
   void setHappy() {
-    _currentMood = 'assets/happy_emoji.jpeg';
-    _backgroundColor = Colors.yellow;
-    _moodCounts['Happy'] = (_moodCounts['Happy'] ?? 0) + 1;
-    notifyListeners();
+    _updateMood('Happy', 'assets/happy_emoji.jpeg', Colors.yellow);
   }
 
   void setSad() {
-    _currentMood = 'assets/sad_emoji.jpeg';
-    _backgroundColor = Colors.blue;
-    _moodCounts['Sad'] = (_moodCounts['Sad'] ?? 0) + 1;
-    notifyListeners();
+    _updateMood('Sad', 'assets/sad_emoji.jpeg', Colors.blue);
   }
 
   void setExcited() {
-    _currentMood = 'assets/excited_emoji.jpeg';
-    _backgroundColor = Colors.orange;
-    _moodCounts['Excited'] = (_moodCounts['Excited'] ?? 0) + 1;
-    notifyListeners();
+    _updateMood('Excited', 'assets/excited_emoji.jpeg', Colors.orange);
   }
 }
 
@@ -67,7 +75,7 @@ class HomePage extends StatelessWidget {
       builder: (context, moodModel, child) {
         return Scaffold(
           appBar: AppBar(title: Text('Mood Toggle Challenge')),
-          backgroundColor: moodModel.backgroundColor, // dynamic bg color
+          backgroundColor: moodModel.backgroundColor,
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -78,7 +86,9 @@ class HomePage extends StatelessWidget {
                 SizedBox(height: 50),
                 MoodButtons(),
                 SizedBox(height: 30),
-                MoodCounter(), // 👈 new widget for counts
+                MoodCounter(),
+                SizedBox(height: 30),
+                MoodHistory(),
               ],
             ),
           ),
@@ -135,7 +145,6 @@ class MoodButtons extends StatelessWidget {
   }
 }
 
-// Widget that displays mood counters
 class MoodCounter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -160,7 +169,6 @@ class MoodCounter extends StatelessWidget {
   }
 }
 
-// A small reusable widget for each counter
 class CounterCard extends StatelessWidget {
   final String label;
   final int count;
@@ -177,6 +185,39 @@ class CounterCard extends StatelessWidget {
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
       ],
+    );
+  }
+}
+
+class MoodHistory extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<MoodModel>(
+      builder: (context, moodModel, child) {
+        final history = moodModel.moodHistory;
+        if (history.isEmpty) {
+          return Text("No history", style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic));
+        }
+
+        return Column(
+          children: [
+            Text("Last Three Mood History:", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: history
+                  .map((mood) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text(
+                          mood,
+                          style: TextStyle(fontSize: 18),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ],
+        );
+      },
     );
   }
 }
