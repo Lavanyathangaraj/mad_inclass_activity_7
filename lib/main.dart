@@ -1,10 +1,14 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => MoodModel(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => MoodModel()),
+        ChangeNotifierProvider(create: (context) => ThemeModel()),
+      ],
       child: MyApp(),
     ),
   );
@@ -13,7 +17,6 @@ void main() {
 // Mood Model - The "Brain" of our app
 class MoodModel with ChangeNotifier {
   String _currentMood = 'assets/happy_emoji.jpeg';
-  Color _backgroundColor = Colors.yellow;
 
   final Map<String, int> _moodCounts = {
     'Happy': 0,
@@ -24,13 +27,12 @@ class MoodModel with ChangeNotifier {
   final List<String> _moodHistory = [];
 
   String get currentMood => _currentMood;
-  Color get backgroundColor => _backgroundColor;
   Map<String, int> get moodCounts => _moodCounts;
   List<String> get moodHistory => _moodHistory;
 
-  void _updateMood(String mood, String asset, Color bgColor) {
+  void _updateMood(String mood, String asset, Color bgColor, BuildContext context) {
     _currentMood = asset;
-    _backgroundColor = bgColor;
+    Provider.of<ThemeModel>(context, listen: false).setMoodColor(bgColor);
 
     _moodCounts[mood] = (_moodCounts[mood] ?? 0) + 1;
 
@@ -42,16 +44,76 @@ class MoodModel with ChangeNotifier {
     notifyListeners();
   }
 
-  void setHappy() {
-    _updateMood('Happy', 'assets/happy_emoji.jpeg', Colors.yellow);
+  void setHappy(BuildContext context) {
+    _updateMood('Happy', 'assets/happy_emoji.jpeg',
+        Provider.of<ThemeModel>(context, listen: false).getColor('Happy'), context);
   }
 
-  void setSad() {
-    _updateMood('Sad', 'assets/sad_emoji.jpeg', Colors.blue);
+  void setSad(BuildContext context) {
+    _updateMood('Sad', 'assets/sad_emoji.jpeg',
+        Provider.of<ThemeModel>(context, listen: false).getColor('Sad'), context);
   }
 
-  void setExcited() {
-    _updateMood('Excited', 'assets/excited_emoji.jpeg', Colors.orange);
+  void setExcited(BuildContext context) {
+    _updateMood('Excited', 'assets/excited_emoji.jpeg',
+        Provider.of<ThemeModel>(context, listen: false).getColor('Excited'), context);
+  }
+
+  void setRandomMood(BuildContext context) {
+    final random = Random();
+    int choice = random.nextInt(3);
+
+    switch (choice) {
+      case 0:
+        setHappy(context);
+        break;
+      case 1:
+        setSad(context);
+        break;
+      case 2:
+        setExcited(context);
+        break;
+    }
+  }
+}
+
+class ThemeModel with ChangeNotifier {
+  String _mode = 'Default';
+  Color _currentColor = Colors.yellow;
+
+  final Map<String, Map<String, Color>> _modeColors = {
+    'Default': {
+      'Happy': Colors.yellow,
+      'Sad': Colors.blue,
+      'Excited': Colors.orange,
+    },
+    'Dark': {
+      'Happy': Colors.amber.shade700,
+      'Sad': Colors.blue.shade900,
+      'Excited': Colors.deepOrange.shade700,
+    },
+    'Pastel': {
+      'Happy': Colors.yellow.shade100,
+      'Sad': Colors.blue.shade100,
+      'Excited': Colors.orange.shade100,
+    },
+  };
+
+  String get mode => _mode;
+  Color get currentColor => _currentColor;
+
+  void setMode(String mode) {
+    _mode = mode;
+    notifyListeners();
+  }
+
+  void setMoodColor(Color color) {
+    _currentColor = color;
+    notifyListeners();
+  }
+
+  Color getColor(String mood) {
+    return _modeColors[_mode]?[mood] ?? Colors.grey;
   }
 }
 
@@ -71,20 +133,22 @@ class MyApp extends StatelessWidget {
 class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Consumer<MoodModel>(
-      builder: (context, moodModel, child) {
+    return Consumer2<MoodModel, ThemeModel>(
+      builder: (context, moodModel, themeModel, child) {
         return Scaffold(
           appBar: AppBar(title: Text('Mood Toggle Challenge')),
-          backgroundColor: moodModel.backgroundColor,
+          backgroundColor: themeModel.currentColor,
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text('How are you feeling?', style: TextStyle(fontSize: 24)),
-                SizedBox(height: 30),
+                SizedBox(height: 20),
                 MoodDisplay(),
-                SizedBox(height: 50),
+                SizedBox(height: 30),
                 MoodButtons(),
+                SizedBox(height: 20),
+                ThemeSelector(),
                 SizedBox(height: 30),
                 MoodCounter(),
                 SizedBox(height: 30),
@@ -98,7 +162,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// Widget that displays the current mood
+// Mood Display Widget
 class MoodDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -115,36 +179,83 @@ class MoodDisplay extends StatelessWidget {
   }
 }
 
-// Widget with buttons to change the mood
+// Mood Buttons
 class MoodButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Column(
       children: [
-        ElevatedButton(
-          onPressed: () {
-            Provider.of<MoodModel>(context, listen: false).setHappy();
-          },
-          child: Text('Happy'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                Provider.of<MoodModel>(context, listen: false).setHappy(context);
+              },
+              child: Text('Happy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Provider.of<MoodModel>(context, listen: false).setSad(context);
+              },
+              child: Text('Sad'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Provider.of<MoodModel>(context, listen: false).setExcited(context);
+              },
+              child: Text('Excited'),
+            ),
+          ],
         ),
+        SizedBox(height: 20),
         ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.purple,
+            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+          ),
           onPressed: () {
-            Provider.of<MoodModel>(context, listen: false).setSad();
+            Provider.of<MoodModel>(context, listen: false).setRandomMood(context);
           },
-          child: Text('Sad'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Provider.of<MoodModel>(context, listen: false).setExcited();
-          },
-          child: Text('Excited'),
+          child: Text('Random Mood', style: TextStyle(fontSize: 18, color: Colors.white)),
         ),
       ],
     );
   }
 }
 
+class ThemeSelector extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ThemeModel>(
+      builder: (context, themeModel, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("Select Mode: ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(width: 10),
+            DropdownButton<String>(
+              value: themeModel.mode,
+              items: ['Default', 'Dark', 'Pastel']
+                  .map((mode) => DropdownMenuItem(
+                        value: mode,
+                        child: Text(mode),
+                      ))
+                  .toList(),
+              onChanged: (mode) {
+                if (mode != null) {
+                  themeModel.setMode(mode);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// Mood Counter Widget
 class MoodCounter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -189,6 +300,7 @@ class CounterCard extends StatelessWidget {
   }
 }
 
+// Mood History Widget
 class MoodHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -196,12 +308,12 @@ class MoodHistory extends StatelessWidget {
       builder: (context, moodModel, child) {
         final history = moodModel.moodHistory;
         if (history.isEmpty) {
-          return Text("No history", style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic));
+          return Text("No history yet", style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic));
         }
 
         return Column(
           children: [
-            Text("Last Three Mood History:", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text("Last three Mood History:", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
